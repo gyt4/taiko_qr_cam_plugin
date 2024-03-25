@@ -13,6 +13,8 @@ make a folder named "plugins" in the same path of Taiko.exe,bnusio.dll...etc
 
 put the cv_qr.dll in the plugins folder.
 
+install dependences(libopencv_....dll...etc) correctly.
+
 run Taiko.exe.
 
 # config
