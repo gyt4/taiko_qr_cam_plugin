@@ -24,10 +24,10 @@ once run the game with this plugin,a config file named "cam_cfg.txt" will be cre
 0 640 480 0 5
 ```
 0 : use the first camera of system (can be changed to 1..2..3...)  
-640 : camera width in pixel (depends on your camera,eats performance)  
-480 : camera height in pixel (depends on your camera,eats performance)
-0 : use or not use debug screen (1 : display the camera view, 0 : off)
-5 : fps of camera (depends on your camera,eats performance)
+640 : camera width in pixel (depends on your camera,eats performance)    
+480 : camera height in pixel (depends on your camera,eats performance)  
+0 : use or not use debug screen (1 : display the camera view, 0 : off)  
+5 : fps of camera (depends on your camera,eats performance)  
 
 the default config works fine with most of the camera.  
 640x480@5fps is enough, if you see it is obscure , that is because a error focal length on your camera.  
