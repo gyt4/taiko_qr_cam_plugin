@@ -5,6 +5,7 @@
 #include <fstream>
 #include <chrono>
 #include <unistd.h>
+#include <thread>
 using namespace std;
 using namespace cv;
 using namespace chrono;
@@ -15,10 +16,13 @@ unsigned long long last_send_time = 0;
 unsigned long long last_send4_time = 0;
 cv::VideoCapture cap;
 std::string information;
-bool cam_opened = 0;
+bool cam_opened = false;
+bool qr_detected = false;
+std::vector<uint8_t> qr_buffer = {};
 
-struct
-{
+bool alive = true;
+
+struct {
     int cap_id = 0;
     int cap_w = 0;
     int cap_h = 0;
@@ -26,18 +30,17 @@ struct
     int fps = 0;
 } cfg;
 
+void CamUpdate();
+
 extern "C"
 {
-    // ok:0 fail:1
-    __declspec(dllexport) int initCam(void)
-    {
-        cout << "[ CAM QR ] cam qr plugin do init" << endl;
+    __declspec(dllexport) void Init(void) {
+        std::cout << "[ CAM QR ] Begin Init Plugin" << std::endl;
 
-        if (access("cam_cfg.txt", F_OK) == 0)
-        {
+        if (access("cam_cfg.txt", F_OK) == 0) {
             // cam_cfg.txt exist
-            cout << "cam_cfg.txt exist!" << endl;
-            fstream cfgFile;
+            std::cout << "cam_cfg.txt exist!" << std::endl;
+            std::fstream cfgFile;
             cfgFile.open("cam_cfg.txt", ios::in);
             cfgFile >> cfg.cap_id;
             cfgFile >> cfg.cap_w;
@@ -45,116 +48,114 @@ extern "C"
             cfgFile >> cfg.mini_disp;
             cfgFile >> cfg.fps;
             cfgFile.close();
-        }
-        else
-        {
+        } else {
             // cam_cfg.txt not exist
-            cout << "making cam_cfg.txt!" << endl;
-            fstream cfgFile;
+            std::cout << "making cam_cfg.txt!" << std::endl;
+            std::fstream cfgFile;
             cfgFile.open("cam_cfg.txt", ios::out);
-            cfgFile << "0 ";
-            cfg.cap_id = 0;
-            cfgFile << "640 ";
-            cfg.cap_w = 640;
-            cfgFile << "480 ";
-            cfg.cap_h = 480;
-            cfgFile << "0 ";
-            cfg.mini_disp;
-            cfgFile << "5\n";
-            cfg.fps = 5;
+            cfgFile << (cfg.cap_id = 0) << " ";
+            cfgFile << (cfg.cap_w = 640) << " ";
+            cfgFile << (cfg.cap_h = 480) << " ";
+            cfgFile << (cfg.mini_disp = 0) << " ";
+            cfgFile << (cfg.fps = 5) << std::endl;
             cfgFile.close();
         }
 
-        cout << "camera config:\n";
-        cout << "cam id = " << cfg.cap_id << endl;
-        cout << "cam width = " << cfg.cap_w << endl;
-        cout << "cam height = " << cfg.cap_h << endl;
-        cout << "debug display = " << cfg.mini_disp << endl;
-        cout << "cam fps = " << cfg.fps << endl;
+        std::cout << "camera config:\n";
+        std::cout << "cam id = " << cfg.cap_id << std::endl;
+        std::cout << "cam width = " << cfg.cap_w << std::endl;
+        std::cout << "cam height = " << cfg.cap_h << std::endl;
+        std::cout << "debug display = " << cfg.mini_disp << std::endl;
+        std::cout << "cam fps = " << cfg.fps << std::endl;
 
-        return 0;
+        std::thread mainLoop(CamUpdate);
+        mainLoop.detach();
+        std::cout << "[ CAM QR ] Init Finished!" << std::endl;
     }
 
-    __declspec(dllexport) int camUpdate(void)
-    {
-        if (!cam_opened)
-            return 0;
-        unsigned long long mse =
+    __declspec(dllexport) bool checkQr(void) {
+        last_send4_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+        if (qr_detected) {
+            std::cout << "[ CAM QR ] Found QRCode! " << std::endl;
+            qr_detected = false;
+            return true;
+        }
+
+        return false;
+    }
+
+    __declspec(dllexport) std::vector<uint8_t> getQr(void) {
+        std::cout << "[ CAM QR ] GetQRCode length=" << qr_buffer.size() << std::endl;
+        return qr_buffer;
+    }
+
+    // __declspec(dllexport) void Exit(void) {
+    //     std::cout << "[ CAM QR ] Exit" << std::endl;
+    // }
+
+    void CamUpdate() {
+        int delayMilliseconds = 1000.0 / cfg.fps;
+        while (alive) {
+            std::this_thread::sleep_for(std::chrono::seconds(delayMilliseconds));
+
+            unsigned long long mse =
             duration_cast<milliseconds>(system_clock::now().time_since_epoch())
                 .count();
 
-        if (mse - last_send4_time >= 1500)
-        {
-            cout << "[ CAM QR ] after send4 too long closing camera " << endl;
-            cap.release();
-            cam_opened = 0;
-            if (cfg.mini_disp)
-                destroyWindow("camera");
-        }
-        return 0;
-    }
+            if (mse - last_send4_time < 1500) {
+                if (!cam_opened) {
+                    std::cout << "[ CAM QR ] beginRead:: trying to open camera" << std::endl;
 
-    // data got:0 no qr:1 error:2
-    __declspec(dllexport) int getCamQr(unsigned char buf[], int *blen)
-    {
-        unsigned long long mse =
-            duration_cast<milliseconds>(system_clock::now().time_since_epoch())
-                .count();
-        last_send4_time = mse;
+                    cap.open(cfg.cap_id);
 
-        if (!cam_opened)
-        {
-            cout << "[ CAM QR ] beginRead:: trying to open camera" << endl;
+                    if (!cap.isOpened()) {
+                        cam_opened = false;
+                        std::cout << "[ CAM QR ] Camera cannot be opened!!" << std::endl;
+                        std::cout << "[ CAM QR ] Retry is Scheduled After 5s!!" << std::endl;
+                        delayMilliseconds = 5000;
+                        continue;
+                    }
+                    cam_opened = 1;
+                    cout << "[ CAM QR ] Camera is opened!" << endl;
 
-            cap.open(cfg.cap_id);
-
-            if (!cap.isOpened())
-            {
-                cam_opened = 0;
-                std::cout << "[ CAM QR ] Camera cannot be opened!!\n";
-                return 2;
-            }
-            cam_opened = 1;
-            cout << "[ CAM QR ] Camera is opened!" << endl;
-
-            cap.set(cv::CAP_PROP_FRAME_WIDTH, cfg.cap_w);  // 宽度
-            cap.set(cv::CAP_PROP_FRAME_HEIGHT, cfg.cap_h); // 高度
-        }
-
-        bool cam_qr_vaild = 0;
-        cv::Mat img;
-        if (mse - last_cam_time >= (1000 / cfg.fps))
-        {
-            last_cam_time = mse;
-            Mat gray, qrcode_bin;
-            QRCodeDetector qrcodedetector;
-            std::vector<Point> points;
-            cap >> img;
-            if (cfg.mini_disp)
-            {
-                imshow("camera", img);
-            }
-            cvtColor(img, gray, COLOR_BGR2GRAY);
-            if (qrcodedetector.detect(gray, points))
-            {
-                information = qrcodedetector.decode(gray, points, qrcode_bin);
-                if (information.length())
-                {
-                    cam_qr_vaild = 1;
+                    cap.set(cv::CAP_PROP_FRAME_WIDTH, cfg.cap_w);  // 宽度
+                    cap.set(cv::CAP_PROP_FRAME_HEIGHT, cfg.cap_h); // 高度
                 }
+
+                if (mse - last_send_time > 5000) {
+                    last_cam_time = mse;
+                    cv::Mat img, gray, qrcode_bin;
+                    cv::QRCodeDetector qrcodedetector;
+                    std::vector<Point> points;
+                    cap >> img;
+                    if (cfg.mini_disp) {
+                        imshow("camera", img);
+                    }
+                    cvtColor(img, gray, COLOR_BGR2GRAY);
+                    if (qrcodedetector.detect(gray, points)) {
+                        information = qrcodedetector.decode(gray, points, qrcode_bin);
+                        if (information.length()) {
+                            std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
+                            qr_buffer.clear();
+                            for (char data : information) {
+                                qr_buffer.push_back(static_cast<uint8_t>(c));
+                            }
+                            qr_detected = true;
+                            delayMilliseconds = 5000;
+                            continue;
+                        }
+                    }
+                }
+
+                delayMilliseconds = 1000.0 / cfg.fps;
+            } else if (cam_opened) {
+                cout << "[ CAM QR ] after send4 too long closing camera " << endl;
+                cap.release();
+                cam_opened = 0;
+                if (cfg.mini_disp)
+                    destroyWindow("camera");
+                delayMilliseconds = 1500;
             }
         }
-
-        if (mse - last_send_time <= 5000)
-            return 1;
-        if (!cam_qr_vaild)
-            return 1;
-
-        std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
-        auto dataSize = information.length();
-        *blen = dataSize;
-        memcpy(buf, (char *)information.c_str(), dataSize);
-        last_send_time = mse;
-        return 0;
     }
 }
