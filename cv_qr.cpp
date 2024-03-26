@@ -138,7 +138,7 @@ extern "C"
                             std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
                             qr_buffer.clear();
                             for (char data : information) {
-                                qr_buffer.push_back(static_cast<uint8_t>(c));
+                                qr_buffer.push_back(static_cast<uint8_t>(data));
                             }
                             qr_detected = true;
                             delayMilliseconds = 5000;
