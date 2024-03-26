@@ -12,8 +12,10 @@ using namespace chrono;
 int cam_id = 0;
 unsigned long long last_cam_time = 0;
 unsigned long long last_send_time = 0;
+unsigned long long last_send4_time = 0;
 cv::VideoCapture cap;
 std::string information;
+bool cam_opened = 0;
 
 struct
 {
@@ -31,13 +33,12 @@ extern "C"
     {
         cout << "[ CAM QR ] cam qr plugin do init" << endl;
 
-        int i = 0;
         if (access("cam_cfg.txt", F_OK) == 0)
         {
             // cam_cfg.txt exist
             cout << "cam_cfg.txt exist!" << endl;
             fstream cfgFile;
-            cfgFile.open("cam_cfg.txt",ios::in);
+            cfgFile.open("cam_cfg.txt", ios::in);
             cfgFile >> cfg.cap_id;
             cfgFile >> cfg.cap_w;
             cfgFile >> cfg.cap_h;
@@ -50,7 +51,7 @@ extern "C"
             // cam_cfg.txt not exist
             cout << "making cam_cfg.txt!" << endl;
             fstream cfgFile;
-            cfgFile.open("cam_cfg.txt",ios::out);
+            cfgFile.open("cam_cfg.txt", ios::out);
             cfgFile << "0 ";
             cfg.cap_id = 0;
             cfgFile << "640 ";
@@ -71,36 +72,58 @@ extern "C"
         cout << "debug display = " << cfg.mini_disp << endl;
         cout << "cam fps = " << cfg.fps << endl;
 
-        cout << "[ CAM QR ] trying to open camera" << endl;
+        return 0;
+    }
 
-        cap.open(cfg.cap_id);
+    __declspec(dllexport) int camUpdate(void)
+    {
+        if (!cam_opened)
+            return 0;
+        unsigned long long mse =
+            duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+                .count();
 
-        if (!cap.isOpened())
+        if (mse - last_send4_time >= 1500)
         {
-            std::cout << "Camera cannot be opened!!\n";
-            return 1;
+            cout << "[ CAM QR ] after send4 too long closing camera " << endl;
+            cap.release();
+            cam_opened = 0;
+            if (cfg.mini_disp)
+                destroyWindow("camera");
         }
-        cout << "[ CAM QR ] Camera is opened!" << endl;
-
-        cap.set(cv::CAP_PROP_FRAME_WIDTH, cfg.cap_w);  // 宽度
-        cap.set(cv::CAP_PROP_FRAME_HEIGHT, cfg.cap_h); // 高度
-
         return 0;
     }
 
     // data got:0 no qr:1 error:2
     __declspec(dllexport) int getCamQr(unsigned char buf[], int *blen)
     {
-        cv::Mat img;
-        if (!cap.isOpened())
-            return 2;
-
-        bool cam_qr_vaild = 0;
         unsigned long long mse =
             duration_cast<milliseconds>(system_clock::now().time_since_epoch())
                 .count();
+        last_send4_time = mse;
 
-        if (mse - last_cam_time >= (1000/cfg.fps)) //~ 5fps
+        if (!cam_opened)
+        {
+            cout << "[ CAM QR ] beginRead:: trying to open camera" << endl;
+
+            cap.open(cfg.cap_id);
+
+            if (!cap.isOpened())
+            {
+                cam_opened = 0;
+                std::cout << "[ CAM QR ] Camera cannot be opened!!\n";
+                return 2;
+            }
+            cam_opened = 1;
+            cout << "[ CAM QR ] Camera is opened!" << endl;
+
+            cap.set(cv::CAP_PROP_FRAME_WIDTH, cfg.cap_w);  // 宽度
+            cap.set(cv::CAP_PROP_FRAME_HEIGHT, cfg.cap_h); // 高度
+        }
+
+        bool cam_qr_vaild = 0;
+        cv::Mat img;
+        if (mse - last_cam_time >= (1000 / cfg.fps))
         {
             last_cam_time = mse;
             Mat gray, qrcode_bin;
