@@ -20,7 +20,6 @@ bool qr_detected = false;
 std::vector<uint8_t> qr_buffer = {};
 
 bool alive = true;
-int closeCameraDelayMillis = 2000;
 
 struct {
     int cap_id = 0;
@@ -28,6 +27,7 @@ struct {
     int cap_h = 0;
     int mini_disp = 0;
     int fps = 0;
+    int close_delay = 0;
 } cfg;
 
 extern "C"
@@ -47,6 +47,7 @@ extern "C"
             cfgFile >> cfg.cap_h;
             cfgFile >> cfg.mini_disp;
             cfgFile >> cfg.fps;
+            cfgFile >> cfg.close_delay;
             cfgFile.close();
         } else {
             // cam_cfg.txt not exist
@@ -57,7 +58,8 @@ extern "C"
             cfgFile << (cfg.cap_w = 640) << " ";
             cfgFile << (cfg.cap_h = 480) << " ";
             cfgFile << (cfg.mini_disp = 0) << " ";
-            cfgFile << (cfg.fps = 5) << std::endl;
+            cfgFile << (cfg.fps = 5) << " ";
+            cfgFile << (cfg.close_delay = 1500) << std::endl;
             cfgFile.close();
         }
 
@@ -67,6 +69,7 @@ extern "C"
         std::cout << "[ CAM QR ] cam height = " << cfg.cap_h << std::endl;
         std::cout << "[ CAM QR ] debug display = " << cfg.mini_disp << std::endl;
         std::cout << "[ CAM QR ] cam fps = " << cfg.fps << std::endl;
+        std::cout << "[ CAM QR ] cam close delay = " << cfg.close_delay << std::endl;
 
         std::thread mainLoop(CamUpdate);
         mainLoop.detach();
@@ -104,14 +107,14 @@ extern "C"
         cv::String information;
         cv::Point points[3];
         
-        int delayMilliseconds = closeCameraDelayMillis;
+        int delayMilliseconds = cfg.close_delay;
         while (alive) {
             std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilliseconds << "ms" << std::endl;
             if (delayMilliseconds > 0) std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
 
             unsigned long long begin = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-            if (begin - last_using_time < closeCameraDelayMillis) {
+            if (begin - last_using_time < cfg.close_delay) {
                 if (!cam_opened) {
                     std::cout << "[ CAM QR ] Opening camera..." << std::endl;
 
@@ -157,7 +160,7 @@ extern "C"
                 cap.release();
                 cam_opened = false;
                 if (cfg.mini_disp) destroyWindow("camera");
-                delayMilliseconds = closeCameraDelayMillis;
+                delayMilliseconds = cfg.close_delay;
             }
         }
         // 结束后关闭cap并关掉小窗口
