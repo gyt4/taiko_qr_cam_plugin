@@ -30,10 +30,10 @@ struct {
     int fps = 0;
 } cfg;
 
-void CamUpdate();
-
 extern "C"
 {
+    void CamUpdate();
+
     __declspec(dllexport) void Init(void) {
         std::cout << "[ CAM QR ] Begin Init Plugin" << std::endl;
 
@@ -96,7 +96,8 @@ extern "C"
     void CamUpdate() {
         int delayMilliseconds = 1000.0 / cfg.fps;
         while (alive) {
-            std::this_thread::sleep_for(std::chrono::seconds(delayMilliseconds));
+            std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilloseconds << "ms" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
 
             unsigned long long mse =
             duration_cast<milliseconds>(system_clock::now().time_since_epoch())
@@ -112,7 +113,7 @@ extern "C"
                         cam_opened = false;
                         std::cout << "[ CAM QR ] Camera cannot be opened!!" << std::endl;
                         std::cout << "[ CAM QR ] Retry is Scheduled After 5s!!" << std::endl;
-                        delayMilliseconds = 5000;
+                        delayMilliseconds = 1000;
                         continue;
                     }
                     cam_opened = 1;
@@ -141,7 +142,7 @@ extern "C"
                                 qr_buffer.push_back(static_cast<uint8_t>(data));
                             }
                             qr_detected = true;
-                            delayMilliseconds = 5000;
+                            delayMilliseconds = 1000;
                             continue;
                         }
                     }
@@ -149,7 +150,7 @@ extern "C"
 
                 delayMilliseconds = 1000.0 / cfg.fps;
             } else if (cam_opened) {
-                cout << "[ CAM QR ] after send4 too long closing camera " << endl;
+                std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
                 cap.release();
                 cam_opened = 0;
                 if (cfg.mini_disp)
