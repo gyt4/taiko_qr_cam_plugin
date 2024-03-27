@@ -73,8 +73,11 @@ extern "C"
         std::cout << "[ CAM QR ] Init Finished!" << std::endl;
     }
 
-    __declspec(dllexport) bool checkQr(void) {
+    __declspec(dllexport) void usingQr(void) {
         last_send4_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    }
+
+    __declspec(dllexport) bool checkQr(void) {
         if (qr_detected) {
             std::cout << "[ CAM QR ] Found QRCode! " << std::endl;
             qr_detected = false;
@@ -105,7 +108,7 @@ extern "C"
 
             if (mse - last_send4_time < 1500) {
                 if (!cam_opened) {
-                    std::cout << "[ CAM QR ] beginRead:: trying to open camera" << std::endl;
+                    std::cout << "[ CAM QR ] Opening camera..." << std::endl;
 
                     cap.open(cfg.cap_id);
 
