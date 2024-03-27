@@ -15,7 +15,6 @@ unsigned long long last_cam_time = 0;
 unsigned long long last_send_time = 0;
 unsigned long long last_using_time = 0;
 cv::VideoCapture cap;
-std::string information;
 bool cam_opened = false;
 bool qr_detected = false;
 std::vector<uint8_t> qr_buffer = {};
@@ -93,20 +92,26 @@ extern "C"
         return qr_buffer;
     }
 
-    // __declspec(dllexport) void Exit(void) {
-    //     std::cout << "[ CAM QR ] Exit" << std::endl;
-    // }
+    __declspec(dllexport) void Exit(void) {
+        std::cout << "[ CAM QR ] Exit" << std::endl;
+        alive = false;
+        
+    }
 
     void CamUpdate() {
+        cv::Mat img, gray;
+        cv::QRCodeDetector qrcodedetector;
+        cv::String information;
+        cv::Point points[3];
+        
         int delayMilliseconds = closeCameraDelayMillis;
         while (alive) {
             std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilliseconds << "ms" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
+            if (delayMilliseconds > 0) std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
 
-            unsigned long long mse = duration_cast<milliseconds>(system_clock::now().time_since_epoch())
-                .count();
+            unsigned long long begin = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-            if (mse - last_using_time < closeCameraDelayMillis) {
+            if (begin - last_using_time < closeCameraDelayMillis) {
                 if (!cam_opened) {
                     std::cout << "[ CAM QR ] Opening camera..." << std::endl;
 
@@ -119,46 +124,48 @@ extern "C"
                         delayMilliseconds = 5000;
                         continue;
                     }
-                    cam_opened = 1;
+                    cam_opened = true;
                     cout << "[ CAM QR ] Camera is opened!" << endl;
 
                     cap.set(cv::CAP_PROP_FRAME_WIDTH, cfg.cap_w);  // 宽度
                     cap.set(cv::CAP_PROP_FRAME_HEIGHT, cfg.cap_h); // 高度
                 }
 
-                if (mse - last_send_time > 5000) {
-                    last_cam_time = mse;
-                    cv::Mat img, gray, qrcode_bin;
-                    cv::QRCodeDetector qrcodedetector;
-                    std::vector<Point> points;
+                if (begin - last_send_time > 5000) {
+                    last_cam_time = begin;
                     cap >> img;
-                    if (cfg.mini_disp) {
-                        imshow("camera", img);
-                    }
+                    if (cfg.mini_disp) imshow("camera", img);
                     cvtColor(img, gray, COLOR_BGR2GRAY);
-                    if (qrcodedetector.detect(gray, points)) {
-                        information = qrcodedetector.decode(gray, points, qrcode_bin);
-                        if (information.length()) {
-                            std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
-                            qr_buffer.clear();
-                            for (char data : information) {
-                                qr_buffer.push_back(static_cast<uint8_t>(data));
-                            }
-                            qr_detected = true;
-                            delayMilliseconds = 5000;
-                            continue;
+                    bool detected = qrcodedetector.detectAndDecode(gray, information, points);
+                    if (detected) {
+                        std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
+                        qr_buffer.clear();
+                        for (char data : information) {
+                            qr_buffer.push_back(static_cast<uint8_t>(data));
                         }
+                        qr_detected = true;
+                        delayMilliseconds = 5000;
+                        continue;
                     }
                 }
 
-                delayMilliseconds = 1000.0 / cfg.fps;
+                unsigned long long end = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+                delayMilliseconds = (1000.0 / cfg.fps) + begin - end;
+                if (delayMilliseconds < 0) delayMilliseconds = 0;
             } else if (cam_opened) {
                 std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
                 cap.release();
-                cam_opened = 0;
+                cam_opened = false;
                 if (cfg.mini_disp) destroyWindow("camera");
                 delayMilliseconds = closeCameraDelayMillis;
             }
+        }
+        // 结束后关闭cap并关掉小窗口
+        if (cam_opened) {
+            std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
+            cap.release();
+            cam_opened = false;
+            if (cfg.mini_disp) destroyWindow("camera");
         }
     }
 }
