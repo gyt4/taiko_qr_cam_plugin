@@ -13,7 +13,7 @@ using namespace chrono;
 int cam_id = 0;
 unsigned long long last_cam_time = 0;
 unsigned long long last_send_time = 0;
-unsigned long long last_send4_time = 0;
+unsigned long long last_using_time = 0;
 cv::VideoCapture cap;
 std::string information;
 bool cam_opened = false;
@@ -21,6 +21,7 @@ bool qr_detected = false;
 std::vector<uint8_t> qr_buffer = {};
 
 bool alive = true;
+int closeCameraDelayMillis = 2000;
 
 struct {
     int cap_id = 0;
@@ -61,12 +62,12 @@ extern "C"
             cfgFile.close();
         }
 
-        std::cout << "camera config:\n";
-        std::cout << "cam id = " << cfg.cap_id << std::endl;
-        std::cout << "cam width = " << cfg.cap_w << std::endl;
-        std::cout << "cam height = " << cfg.cap_h << std::endl;
-        std::cout << "debug display = " << cfg.mini_disp << std::endl;
-        std::cout << "cam fps = " << cfg.fps << std::endl;
+        std::cout << "[ CAM QR ] camera config:\n";
+        std::cout << "[ CAM QR ] cam id = " << cfg.cap_id << std::endl;
+        std::cout << "[ CAM QR ] cam width = " << cfg.cap_w << std::endl;
+        std::cout << "[ CAM QR ] cam height = " << cfg.cap_h << std::endl;
+        std::cout << "[ CAM QR ] debug display = " << cfg.mini_disp << std::endl;
+        std::cout << "[ CAM QR ] cam fps = " << cfg.fps << std::endl;
 
         std::thread mainLoop(CamUpdate);
         mainLoop.detach();
@@ -74,7 +75,7 @@ extern "C"
     }
 
     __declspec(dllexport) void usingQr(void) {
-        last_send4_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+        last_using_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     }
 
     __declspec(dllexport) bool checkQr(void) {
@@ -97,16 +98,15 @@ extern "C"
     // }
 
     void CamUpdate() {
-        int delayMilliseconds = 1000.0 / cfg.fps;
+        int delayMilliseconds = closeCameraDelayMillis;
         while (alive) {
             std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilliseconds << "ms" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
 
-            unsigned long long mse =
-            duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+            unsigned long long mse = duration_cast<milliseconds>(system_clock::now().time_since_epoch())
                 .count();
 
-            if (mse - last_send4_time < 1500) {
+            if (mse - last_using_time < closeCameraDelayMillis) {
                 if (!cam_opened) {
                     std::cout << "[ CAM QR ] Opening camera..." << std::endl;
 
@@ -152,14 +152,12 @@ extern "C"
                 }
 
                 delayMilliseconds = 1000.0 / cfg.fps;
-            } else {
-                if (if (cam_opened)) {
-                    std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
-                    cap.release();
-                    cam_opened = 0;
-                    if (cfg.mini_disp) destroyWindow("camera");
-                }
-                delayMilliseconds = 1500;
+            } else if (cam_opened) {
+                std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
+                cap.release();
+                cam_opened = 0;
+                if (cfg.mini_disp) destroyWindow("camera");
+                delayMilliseconds = closeCameraDelayMillis;
             }
         }
     }
