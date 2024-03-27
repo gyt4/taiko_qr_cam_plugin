@@ -113,7 +113,7 @@ extern "C"
                         cam_opened = false;
                         std::cout << "[ CAM QR ] Camera cannot be opened!!" << std::endl;
                         std::cout << "[ CAM QR ] Retry is Scheduled After 5s!!" << std::endl;
-                        delayMilliseconds = 1000;
+                        delayMilliseconds = 5000;
                         continue;
                     }
                     cam_opened = 1;
@@ -142,7 +142,7 @@ extern "C"
                                 qr_buffer.push_back(static_cast<uint8_t>(data));
                             }
                             qr_detected = true;
-                            delayMilliseconds = 1000;
+                            delayMilliseconds = 5000;
                             continue;
                         }
                     }
