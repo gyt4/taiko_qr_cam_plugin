@@ -152,12 +152,13 @@ extern "C"
                 }
 
                 delayMilliseconds = 1000.0 / cfg.fps;
-            } else if (cam_opened) {
-                std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
-                cap.release();
-                cam_opened = 0;
-                if (cfg.mini_disp)
-                    destroyWindow("camera");
+            } else {
+                if (if (cam_opened)) {
+                    std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
+                    cap.release();
+                    cam_opened = 0;
+                    if (cfg.mini_disp) destroyWindow("camera");
+                }
                 delayMilliseconds = 1500;
             }
         }
