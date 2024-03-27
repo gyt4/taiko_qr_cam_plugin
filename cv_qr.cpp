@@ -99,7 +99,7 @@ extern "C"
     void CamUpdate() {
         int delayMilliseconds = 1000.0 / cfg.fps;
         while (alive) {
-            std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilloseconds << "ms" << std::endl;
+            std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilliseconds << "ms" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
 
             unsigned long long mse =
