@@ -105,7 +105,6 @@ extern "C"
         try {
             cv::Mat img;
             cv::QRCodeDetector qrcodedetector;
-            std::string information;
             std::vector<cv::Point> points;
             
             int delayMilliseconds = cfg.close_delay;
@@ -137,10 +136,14 @@ extern "C"
     
                     if (begin - last_send_time > 5000) {
                         last_cam_time = begin;
+                        std::cout << "before capture" << std::endl;
                         cap >> img;
+                        std::cout << "after capture" << std::endl;
                         if (cfg.mini_disp) imshow("camera", img);
                         // cvtColor(img, gray, COLOR_BGR2GRAY);
-                        information = qrcodedetector.detectAndDecode(img);
+                        std::cout << "before decode" << std::endl;
+                        std::string information = qrcodedetector.detectAndDecode(img);
+                        std::cout << "after decode" << std::endl;
                         if (information.length() > 0) {
                             std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
                             qr_buffer.clear();
@@ -157,7 +160,7 @@ extern "C"
                     delayMilliseconds = (1000.0 / cfg.fps) + begin - end;
                     if (delayMilliseconds < 0) delayMilliseconds = 0;
                 } else if (cam_opened) {
-                    std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
+                    std::cout << "[ CAM QR ] Close Camera " << std::endl;
                     cap.release();
                     cam_opened = false;
                     if (cfg.mini_disp) destroyWindow("camera");
@@ -166,7 +169,7 @@ extern "C"
             }
             // 结束后关闭cap并关掉小窗口
             if (cam_opened) {
-                std::cout << "[ CAM QR ] after send4 too long closing camera " << std::endl;
+                std::cout << "[ CAM QR ] Close Camera " << std::endl;
                 cap.release();
                 cam_opened = false;
                 if (cfg.mini_disp) destroyWindow("camera");
