@@ -140,7 +140,7 @@ extern "C"
                     if (cfg.mini_disp) imshow("camera", img);
                     cvtColor(img, gray, COLOR_BGR2GRAY);
                     bool detected = qrcodedetector.detectAndDecode(gray, information, points);
-                    if (detected) {
+                    if (detected && information.length() > 0) {
                         std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
                         qr_buffer.clear();
                         for (char data : information) {
