@@ -103,7 +103,7 @@ extern "C"
 
     void CamUpdate() {
         try {
-            cv::Mat img, gray;
+            cv::Mat img;
             cv::QRCodeDetector qrcodedetector;
             std::string information;
             std::vector<cv::Point> points;
@@ -139,8 +139,8 @@ extern "C"
                         last_cam_time = begin;
                         cap >> img;
                         if (cfg.mini_disp) imshow("camera", img);
-                        cvtColor(img, gray, COLOR_BGR2GRAY);
-                        information = qrcodedetector.detectAndDecode(gray, points);
+                        // cvtColor(img, gray, COLOR_BGR2GRAY);
+                        information = qrcodedetector.detectAndDecode(img);
                         if (information.length() > 0) {
                             std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
                             qr_buffer.clear();
