@@ -39,7 +39,7 @@ extern "C"
 
         if (access("cam_cfg.txt", F_OK) == 0) {
             // cam_cfg.txt exist
-            std::cout << "cam_cfg.txt exist!" << std::endl;
+            std::cout << "[ CAM QR] Found cam_cfg.txt!" << std::endl;
             std::fstream cfgFile;
             cfgFile.open("cam_cfg.txt", ios::in);
             cfgFile >> cfg.cap_id;
@@ -51,7 +51,7 @@ extern "C"
             cfgFile.close();
         } else {
             // cam_cfg.txt not exist
-            std::cout << "making cam_cfg.txt!" << std::endl;
+            std::cout << "[ CAM QR ] Create cam_cfg.txt!" << std::endl;
             std::fstream cfgFile;
             cfgFile.open("cam_cfg.txt", ios::out);
             cfgFile << (cfg.cap_id = 0) << " ";
@@ -63,7 +63,7 @@ extern "C"
             cfgFile.close();
         }
 
-        std::cout << "[ CAM QR ] camera config:\n";
+        std::cout << "[ CAM QR ] camera config:" << std::endl;
         std::cout << "[ CAM QR ] cam id = " << cfg.cap_id << std::endl;
         std::cout << "[ CAM QR ] cam width = " << cfg.cap_w << std::endl;
         std::cout << "[ CAM QR ] cam height = " << cfg.cap_h << std::endl;
@@ -91,7 +91,10 @@ extern "C"
     }
 
     __declspec(dllexport) int getQr(int len_limit, uint8_t* buffer) {
-        if (qr_buffer.size() == 0 || qr_buffer.size() > len_limit) return 0;
+        if (qr_buffer.size() == 0 || qr_buffer.size() > len_limit) {
+            std::cout << "[ CAM QR ] Discard QR, max acceptable len: " << len_limit << ", current len: " << qr_buffer.size() << std::endl;
+            return 0;
+        }
         std::cout << "[ CAM QR ] GetQRCode length=" << qr_buffer.size() << std::endl;
         last_send_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
         memcpy(buffer, qr_buffer.data(), qr_buffer.size());
@@ -111,7 +114,7 @@ extern "C"
             
             int delayMilliseconds = cfg.close_delay;
             while (alive) {
-                std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilliseconds << "ms" << std::endl;
+                // std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilliseconds << "ms" << std::endl;
                 if (delayMilliseconds > 0) std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
     
                 unsigned long long begin = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
@@ -142,7 +145,7 @@ extern "C"
                         if (cfg.mini_disp) imshow("camera", img);
                         std::string information = qrcodedetector.detectAndDecode(img);
                         if (information.length() > 0) {
-                            std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
+                            std::cout << "[ CAM QR ] Camera QR vaild, len = " << information.length() << std::endl;
                             qr_buffer.clear();
                             for (char data : information) {
                                 qr_buffer.push_back(static_cast<uint8_t>(data));
