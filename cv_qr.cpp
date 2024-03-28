@@ -90,16 +90,17 @@ extern "C"
         return false;
     }
 
-    __declspec(dllexport) std::vector<uint8_t> getQr(void) {
+    __declspec(dllexport) int getQr(int len_limit, uint8_t* buffer) {
+        if (qr_buffer.size() == 0 || qr_buffer.size() > len_limit) return 0;
         std::cout << "[ CAM QR ] GetQRCode length=" << qr_buffer.size() << std::endl;
         last_send_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-        return qr_buffer;
+        memcpy(buffer, qr_buffer.data(), qr_buffer.size());
+        return qr_buffer.size();
     }
 
     __declspec(dllexport) void Exit(void) {
         std::cout << "[ CAM QR ] Exit" << std::endl;
         alive = false;
-        
     }
 
     void CamUpdate() {
@@ -115,9 +116,7 @@ extern "C"
     
                 unsigned long long begin = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-                std::cout << "before check using time " << begin << " " << last_using_time << std::endl;
                 if (begin - last_using_time < cfg.close_delay) {
-                    std::cout << "using" << std::endl;
                     if (!cam_opened) {
                         std::cout << "[ CAM QR ] Opening camera..." << std::endl;
     
@@ -137,13 +136,10 @@ extern "C"
                         cap.set(cv::CAP_PROP_FRAME_HEIGHT, cfg.cap_h); // 高度
                     }
 
-                    std::cout << "before check read time " << begin << " " << last_send_time << std::endl;
                     if (begin - last_send_time > 5000) {
-                        std::cout << "capturing" << std::endl;
                         last_cam_time = begin;
                         cap >> img;
                         if (cfg.mini_disp) imshow("camera", img);
-                        // cvtColor(img, gray, COLOR_BGR2GRAY);
                         std::string information = qrcodedetector.detectAndDecode(img);
                         if (information.length() > 0) {
                             std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
