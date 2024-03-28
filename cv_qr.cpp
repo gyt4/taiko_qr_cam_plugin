@@ -104,7 +104,7 @@ extern "C"
     void CamUpdate() {
         cv::Mat img, gray;
         cv::QRCodeDetector qrcodedetector;
-        cv::String information;
+        std::string information;
         cv::Point points[3];
         
         int delayMilliseconds = cfg.close_delay;
