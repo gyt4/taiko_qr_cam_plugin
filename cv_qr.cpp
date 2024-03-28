@@ -106,7 +106,7 @@ extern "C"
             cv::Mat img, gray;
             cv::QRCodeDetector qrcodedetector;
             std::string information;
-            cv::Point points[3];
+            std::vector<cv::Point> points;
             
             int delayMilliseconds = cfg.close_delay;
             while (alive) {
@@ -140,8 +140,8 @@ extern "C"
                         cap >> img;
                         if (cfg.mini_disp) imshow("camera", img);
                         cvtColor(img, gray, COLOR_BGR2GRAY);
-                        bool detected = qrcodedetector.detectAndDecode(gray, information, points);
-                        if (detected && information.length() > 0) {
+                        information = qrcodedetector.detectAndDecode(gray, points);
+                        if (information.length() > 0) {
                             std::cout << "[ CAM QR ] camera qr vaild, len = " << information.length() << std::endl;
                             qr_buffer.clear();
                             for (char data : information) {
