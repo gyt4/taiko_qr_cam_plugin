@@ -5,7 +5,8 @@ based on opencv.
 
 # usage
 
-download and configurate the modified TAL: https://github.com/gyt4/TAL_with_QR_api
+download and configurate the modified TAL: https://github.com/lty2008one/TaikoArcadeLoader   
+(Refactor branch,download release in github action dists)
 
 complie it as a dll file using "-shared" arg or download the release.
 
