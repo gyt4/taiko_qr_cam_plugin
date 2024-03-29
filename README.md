@@ -1,4 +1,4 @@
-# taiko_qr_cam_plugin
+# taiko_cam_codereader_plugin
 
 A plugin for TAL,using system camera for qr and barcode reading  
 based on opencv.
