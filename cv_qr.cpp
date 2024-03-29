@@ -21,7 +21,8 @@ std::vector<uint8_t> qr_buffer = {};
 
 bool alive = true;
 
-struct {
+struct
+{
     int cap_id = 0;
     int cap_w = 0;
     int cap_h = 0;
@@ -34,10 +35,12 @@ extern "C"
 {
     void CamUpdate();
 
-    __declspec(dllexport) void Init(void) {
+    __declspec(dllexport) void Init(void)
+    {
         std::cout << "[ CAM QR ] Begin Init Plugin" << std::endl;
 
-        if (access("cam_cfg.txt", F_OK) == 0) {
+        if (access("cam_cfg.txt", F_OK) == 0)
+        {
             // cam_cfg.txt exist
             std::cout << "[ CAM QR] Found cam_cfg.txt!" << std::endl;
             std::fstream cfgFile;
@@ -49,7 +52,9 @@ extern "C"
             cfgFile >> cfg.fps;
             cfgFile >> cfg.close_delay;
             cfgFile.close();
-        } else {
+        }
+        else
+        {
             // cam_cfg.txt not exist
             std::cout << "[ CAM QR ] Create cam_cfg.txt!" << std::endl;
             std::fstream cfgFile;
@@ -76,13 +81,16 @@ extern "C"
         std::cout << "[ CAM QR ] Init Finished!" << std::endl;
     }
 
-    __declspec(dllexport) void usingQr(void) {
+    __declspec(dllexport) void usingQr(void)
+    {
         last_using_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     }
 
-    __declspec(dllexport) bool checkQr(void) {
-        if (qr_detected) {
-            std::cout << "[ CAM QR ] Found QRCode! " << std::endl;
+    __declspec(dllexport) bool checkQr(void)
+    {
+        if (qr_detected)
+        {
+            std::cout << "[ CAM QR ] Found Code! " << std::endl;
             qr_detected = false;
             return true;
         }
@@ -90,42 +98,53 @@ extern "C"
         return false;
     }
 
-    __declspec(dllexport) int getQr(int len_limit, uint8_t* buffer) {
-        if (qr_buffer.size() == 0 || qr_buffer.size() > len_limit) {
-            std::cout << "[ CAM QR ] Discard QR, max acceptable len: " << len_limit << ", current len: " << qr_buffer.size() << std::endl;
+    __declspec(dllexport) int getQr(int len_limit, uint8_t *buffer)
+    {
+        if (qr_buffer.size() == 0 || qr_buffer.size() > len_limit)
+        {
+            std::cout << "[ CAM QR ] Discard Code, max acceptable len: " << len_limit << ", current len: " << qr_buffer.size() << std::endl;
             return 0;
         }
-        std::cout << "[ CAM QR ] GetQRCode length=" << qr_buffer.size() << std::endl;
+        std::cout << "[ CAM QR ] GetCode length=" << qr_buffer.size() << std::endl;
         last_send_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
         memcpy(buffer, qr_buffer.data(), qr_buffer.size());
         return qr_buffer.size();
     }
 
-    __declspec(dllexport) void Exit(void) {
+    __declspec(dllexport) void Exit(void)
+    {
         std::cout << "[ CAM QR ] Exit" << std::endl;
         alive = false;
     }
 
-    void CamUpdate() {
-        try {
+    void CamUpdate()
+    {
+        try
+        {
             cv::Mat img;
             cv::QRCodeDetector qrcodedetector;
+            cv::barcode::BarcodeDetector barcodedetector;
             std::vector<cv::Point> points;
-            
+
             int delayMilliseconds = cfg.close_delay;
-            while (alive) {
+            while (alive)
+            {
                 // std::cout << "[ CAM QR ] Main Loop Sleep for " << delayMilliseconds << "ms" << std::endl;
-                if (delayMilliseconds > 0) std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
-    
+                if (delayMilliseconds > 0)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(delayMilliseconds));
+
                 unsigned long long begin = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-                if (begin - last_using_time < cfg.close_delay) {
-                    if (!cam_opened) {
+                if (begin - last_using_time < cfg.close_delay)
+                {
+                    if (!cam_opened)
+                    {
                         std::cout << "[ CAM QR ] Opening camera..." << std::endl;
-    
+
                         cap.open(cfg.cap_id);
-    
-                        if (!cap.isOpened()) {
+
+                        if (!cap.isOpened())
+                        {
                             cam_opened = false;
                             std::cout << "[ CAM QR ] Camera cannot be opened!!" << std::endl;
                             std::cout << "[ CAM QR ] Retry is Scheduled After 5s!!" << std::endl;
@@ -134,20 +153,37 @@ extern "C"
                         }
                         cam_opened = true;
                         cout << "[ CAM QR ] Camera is opened!" << endl;
-    
+
                         cap.set(cv::CAP_PROP_FRAME_WIDTH, cfg.cap_w);  // 宽度
                         cap.set(cv::CAP_PROP_FRAME_HEIGHT, cfg.cap_h); // 高度
                     }
 
-                    if (begin - last_send_time > 5000) {
+                    if (begin - last_send_time > 5000)
+                    {
                         last_cam_time = begin;
                         cap >> img;
-                        if (cfg.mini_disp) imshow("camera", img);
+                        if (cfg.mini_disp)
+                            imshow("camera", img);
                         std::string information = qrcodedetector.detectAndDecode(img);
-                        if (information.length() > 0) {
+                        if (information.length() > 0)
+                        {
                             std::cout << "[ CAM QR ] Camera QR vaild, len = " << information.length() << std::endl;
                             qr_buffer.clear();
-                            for (char data : information) {
+                            for (char data : information)
+                            {
+                                qr_buffer.push_back(static_cast<uint8_t>(data));
+                            }
+                            qr_detected = true;
+                            delayMilliseconds = 5000;
+                            continue;
+                        }
+                        information = barcodedetector.detectAndDecode(img);
+                        if (information.length() > 0)
+                        {
+                            std::cout << "[ CAM QR ] Camera barcode vaild, len = " << information.length() << std::endl;
+                            qr_buffer.clear();
+                            for (char data : information)
+                            {
                                 qr_buffer.push_back(static_cast<uint8_t>(data));
                             }
                             qr_detected = true;
@@ -155,26 +191,34 @@ extern "C"
                             continue;
                         }
                     }
-    
+
                     unsigned long long end = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
                     delayMilliseconds = (1000.0 / cfg.fps) + begin - end;
-                    if (delayMilliseconds < 0) delayMilliseconds = 0;
-                } else if (cam_opened) {
+                    if (delayMilliseconds < 0)
+                        delayMilliseconds = 0;
+                }
+                else if (cam_opened)
+                {
                     std::cout << "[ CAM QR ] Close Camera " << std::endl;
                     cap.release();
                     cam_opened = false;
-                    if (cfg.mini_disp) destroyWindow("camera");
+                    if (cfg.mini_disp)
+                        destroyWindow("camera");
                     delayMilliseconds = cfg.close_delay;
                 }
             }
             // 结束后关闭cap并关掉小窗口
-            if (cam_opened) {
+            if (cam_opened)
+            {
                 std::cout << "[ CAM QR ] Close Camera " << std::endl;
                 cap.release();
                 cam_opened = false;
-                if (cfg.mini_disp) destroyWindow("camera");
+                if (cfg.mini_disp)
+                    destroyWindow("camera");
             }
-        } catch (std::exception &e) {
+        }
+        catch (std::exception &e)
+        {
             std::cout << e.what() << std::endl;
         }
     }
