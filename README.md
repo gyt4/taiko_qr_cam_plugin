@@ -35,8 +35,7 @@ make sure not to use too high config ,or the game may crash.
 
 # known bugs?
 
-can't find qr that size is too big(has too much data) even the camera capture it very clear.  
-for example: original BNTTCNID codes.
+**none**
 
 # requirments
 
