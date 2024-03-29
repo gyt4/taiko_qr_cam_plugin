@@ -1,6 +1,6 @@
 # taiko_qr_cam_plugin
 
-A plugin for TAL,using system camera for qr reading  
+A plugin for TAL,using system camera for qr and barcode reading  
 based on opencv.
 
 # usage
@@ -40,5 +40,5 @@ for example: original BNTTCNID codes.
 
 # requirments
 
-to complie it,you need to install opencv4.
+to complie it,you need to install opencv453+,best490,and mingw64 posix seh.
 
