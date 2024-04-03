@@ -81,12 +81,12 @@ extern "C"
         std::cout << "[ CAM QR ] Init Finished!" << std::endl;
     }
 
-    __declspec(dllexport) void usingQr(void)
+    __declspec(dllexport) void UsingQr(void)
     {
         last_using_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     }
 
-    __declspec(dllexport) bool checkQr(void)
+    __declspec(dllexport) bool CheckQr(void)
     {
         if (qr_detected)
         {
@@ -98,7 +98,7 @@ extern "C"
         return false;
     }
 
-    __declspec(dllexport) int getQr(int len_limit, uint8_t *buffer)
+    __declspec(dllexport) int GetQr(int len_limit, uint8_t *buffer)
     {
         if (qr_buffer.size() == 0 || qr_buffer.size() > len_limit)
         {
